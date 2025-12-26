@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Russian Verb Declensions</title>
-    <script src="/htmx-2.0.8.js"></script>
+    <script src="htmx-2.0.8.js"></script>
   </head>
   <body>
     <div id="controls">
@@ -32,7 +32,7 @@
     <script>
       const verbOptions = [];
       const verbOptionsList = document.getElementById("verb-options");
-      fetch("/options.json")
+      fetch("options.json")
         .then((response) => response.json())
         .then((options) => {
           options.forEach((option) => {
@@ -49,7 +49,7 @@
 
       function loadVerb(verb) {
         headline.textContent = verb;
-        htmx.ajax("GET", `/verbs/${encodeURIComponent(verb)}.html`, "#content");
+        htmx.ajax("GET", `verbs/${encodeURIComponent(verb)}.html`, "#content");
         searchField.value = verb;
       }
 
@@ -110,6 +110,7 @@
         color: #fff;
         font-size: 1rem;
         padding: 0.2rem 0.4rem;
+        border-radius: 0;
       }
 
       #controls {
