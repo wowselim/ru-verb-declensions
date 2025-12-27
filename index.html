@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Russian Verb Declensions</title>
+    <title>Спряжение русских глаголов</title>
     <style>
       body {
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -85,8 +85,12 @@
         overflow-y: auto;
         overflow-x: hidden;
       }
+
+      .loading {
+        opacity: 0.5;
+        pointer-events: none;
+      }
     </style>
-    <script src="htmx-2.0.8.js"></script>
     <script src="jquery-3.7.1.min.js"></script>
     <script src="jquery-ui-1.14.1.min.js"></script>
     <link rel="stylesheet" href="jquery-ui-1.14.1.min.css" />
@@ -109,11 +113,10 @@
     <div id="content">Введите глагол для поиска</div>
 
     <script>
-      const verbOptions = [];
-      const verbOptionsList = document.getElementById("verb-options");
-      fetch("options.json")
-        .then((response) => response.json())
-        .then((options) => {
+      $(document).ready(function () {
+        const verbOptions = [];
+
+        $.getJSON("options.json", function (options) {
           verbOptions.push(...options);
           $("#search-input").autocomplete({
             source: options,
@@ -125,67 +128,78 @@
           });
         });
 
-      function updateUrl(verb) {
-        const newUrl = location.pathname + "?verb=" + encodeURIComponent(verb);
+        function updateUrl(verb) {
+          const newUrl =
+            location.pathname + "?verb=" + encodeURIComponent(verb);
 
-        if (location.search !== "?verb=" + encodeURIComponent(verb)) {
-          history.pushState({}, "", newUrl);
+          if (location.search !== "?verb=" + encodeURIComponent(verb)) {
+            history.pushState({}, "", newUrl);
+          }
         }
-      }
 
-      const searchField = document.getElementById("search-input");
-      const searchButton = document.getElementById("search-button");
-      const headline = document.getElementById("headline");
+        function loadVerb(verb) {
+          $("#headline").text(verb);
+          $("#search-input").val(verb);
 
-      function loadVerb(verb) {
-        headline.textContent = verb;
-        htmx.ajax("GET", `verbs/${encodeURIComponent(verb)}.html`, "#content");
-        searchField.value = verb;
-      }
+          $("#content").addClass("loading").html("Загрузка...");
 
-      function triggerSearch() {
-        const input = searchField.value.trim();
-        if (!input || !verbOptions.includes(input)) return;
-
-        loadVerb(input);
-        updateUrl(input);
-      }
-
-      searchButton.addEventListener("click", triggerSearch);
-
-      searchField.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          triggerSearch();
+          $.ajax({
+            url: `verbs/${encodeURIComponent(verb)}.html`,
+            method: "GET",
+            success: function (data) {
+              $("#content").removeClass("loading").html(data);
+              initializeTooltips();
+            },
+            error: function () {
+              $("#content")
+                .removeClass("loading")
+                .html("Ошибка загрузки данных для глагола: " + verb);
+            },
+          });
         }
-      });
 
-      const params = new URLSearchParams(window.location.search);
-      const verb = params.get("verb");
-      if (verb) {
-        loadVerb(verb);
-      }
+        function initializeTooltips() {
+          $("#content [title]").tooltip({
+            content: function () {
+              const tooltipText = $(this).attr("title");
+              return tooltipText ? tooltipText.replaceAll("'", " ") : "";
+            },
+          });
+        }
 
-      window.addEventListener("popstate", () => {
+        function triggerSearch() {
+          const input = $("#search-input").val().trim();
+          if (!input || !verbOptions.includes(input)) return;
+
+          loadVerb(input);
+          updateUrl(input);
+        }
+
+        $("#search-button").on("click", triggerSearch);
+
+        $("#search-input").on("keydown", function (e) {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            triggerSearch();
+          }
+        });
+
         const params = new URLSearchParams(window.location.search);
         const verb = params.get("verb");
         if (verb) {
           loadVerb(verb);
-        } else {
-          document.getElementById("content").innerHTML =
-            "Введите глагол для поиска";
-          searchField.value = "";
-          headline.textContent = "";
         }
-      });
 
-      document.body.addEventListener("htmx:afterSwap", (event) => {
-        $("#content").tooltip({
-          content: function () {
-            const element = $(this);
-            const tooltipText = element.attr("title");
-            return tooltipText.replaceAll("'", " ");
-          },
+        $(window).on("popstate", function () {
+          const params = new URLSearchParams(window.location.search);
+          const verb = params.get("verb");
+          if (verb) {
+            loadVerb(verb);
+          } else {
+            $("#content").html("Введите глагол для поиска");
+            $("#search-input").val("");
+            $("#headline").text("");
+          }
         });
       });
     </script>
