@@ -79,48 +79,59 @@
       .centered {
         text-align: center;
       }
+
+      .ui-autocomplete {
+        max-height: 100px;
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
     </style>
     <script src="htmx-2.0.8.js"></script>
+    <script src="jquery-3.7.1.min.js"></script>
+    <script src="jquery-ui-1.14.1.min.js"></script>
+    <link rel="stylesheet" href="jquery-ui-1.14.1.min.css" />
   </head>
   <body>
     <div id="controls">
-      <input
-        list="verb-options"
-        type="search"
-        id="search-input"
-        placeholder="идти"
-      />
-
-      <datalist id="verb-options"></datalist>
+      <input type="search" id="search-input" placeholder="Введите глагол" />
 
       <button
         id="search-button"
         type="button"
-        value="Search"
-        aria-label="Search"
+        value="Искать"
+        aria-label="Искать"
       >
         <img src="search.svg" />
       </button>
     </div>
 
     <h1 id="headline"></h1>
-    <div id="content">Start a search to begin</div>
+    <div id="content">Введите глагол для поиска</div>
 
-    <script src="popper-2.11.8.min.js"></script>
-    <script src="tippy-6.3.7.min.js"></script>
     <script>
       const verbOptions = [];
       const verbOptionsList = document.getElementById("verb-options");
       fetch("options.json")
         .then((response) => response.json())
         .then((options) => {
-          options.forEach((option) => {
-            verbOptions.push(option);
-            const optionElement = document.createElement("option");
-            optionElement.setAttribute("value", option);
-            verbOptionsList.appendChild(optionElement);
+          verbOptions.push(...options);
+          $("#search-input").autocomplete({
+            source: options,
+            select: function (event, ui) {
+              const selectedVerb = ui.item.value;
+              loadVerb(selectedVerb);
+              updateUrl(selectedVerb);
+            },
           });
         });
+
+      function updateUrl(verb) {
+        const newUrl = location.pathname + "?verb=" + encodeURIComponent(verb);
+
+        if (location.search !== "?verb=" + encodeURIComponent(verb)) {
+          history.pushState({}, "", newUrl);
+        }
+      }
 
       const searchField = document.getElementById("search-input");
       const searchButton = document.getElementById("search-button");
@@ -137,11 +148,7 @@
         if (!input || !verbOptions.includes(input)) return;
 
         loadVerb(input);
-
-        const newUrl = `${window.location.pathname}?verb=${encodeURIComponent(
-          input
-        )}`;
-        window.history.pushState({}, "", newUrl);
+        updateUrl(input);
       }
 
       searchButton.addEventListener("click", triggerSearch);
@@ -166,23 +173,19 @@
           loadVerb(verb);
         } else {
           document.getElementById("content").innerHTML =
-            "Start a search to begin";
+            "Введите глагол для поиска";
           searchField.value = "";
           headline.textContent = "";
         }
       });
 
       document.body.addEventListener("htmx:afterSwap", (event) => {
-        document.querySelectorAll("[title]").forEach((element) => {
-          const tooltip = element.getAttribute("title").replaceAll("'", " ");
-          element.setAttribute("aria-label", tooltip);
-          element.removeAttribute("title");
-
-          tippy(element, {
-            touch: true,
-            content: tooltip,
-            maxWidth: "none",
-          });
+        $("#content").tooltip({
+          content: function () {
+            const element = $(this);
+            const tooltipText = element.attr("title");
+            return tooltipText.replaceAll("'", " ");
+          },
         });
       });
     </script>
